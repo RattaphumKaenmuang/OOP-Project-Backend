@@ -15,6 +15,7 @@ class AirportSystem:
         self.__aircraft_list = []
         self.__flight_list = []
         self.__flight_instance_list = []
+        self.__service_list = []
         self.__reservation_list = []
 
     @property
@@ -32,6 +33,14 @@ class AirportSystem:
     @property
     def flight_instance_list(self):
         return self.__flight_instance_list
+    
+    @property
+    def service_list(self):
+        return self.__service_list
+
+    @service_list.setter
+    def service_list(self, service):
+        self.__service_list.append(service)
     
     def get_flight_instance_matches(self, starting_location, destination, date_depart, date_return = None):
         departing_flight_instance = []
@@ -227,20 +236,30 @@ class Qr(Payment):
 
 
 class Service:
-    def __init__(self, price_per_unit):
+    def __init__(self, service_name, price_per_unit):
+        self.__service_name = service_name
         self.__price_per_unit = float(price_per_unit)
 
     @property
-    def price_per_unit(self) :
+    def price_per_unit(self):
         return self.__price_per_unit
 
-
 class Insurance(Service):
-    pass
+    def __init__(self, service_name, price_per_unit):
+        super().__init__(service_name, price_per_unit)
 
 
 class Baggage(Service):
-    pass
+    def __init__(self, service_name, price_per_unit, weight):
+        super().__init__(service_name, price_per_unit)
+        self.__weight = weight
+
+    # def get_total_cost(self):
+    #     return self.price_per_unit * self.__weight
+    
+    # @property
+    # def bag_weight(self) :
+    #     return self.__weight
 
 nokair = AirportSystem()
 nokair.airport_list.append(Airport("Don Mueang", "DMK"))
@@ -248,7 +267,11 @@ nokair.airport_list.append(Airport("Chiang Mai", "CNX"))
 nokair.flight_list.append(Flight(nokair.airport_list[0], nokair.airport_list[1], "ABC"))
 nokair.flight_list.append(Flight(nokair.airport_list[1], nokair.airport_list[0], "ABC"))
 
-
 nokair.aircraft_list.append(Aircraft("101"))
 nokair.flight_instance_list.append(FlightInstance(nokair.flight_list[0], "10:00", "12:00", nokair.aircraft_list[0], "01-01-2000", 1000))
 nokair.flight_instance_list.append(FlightInstance(nokair.flight_list[1], "10:00", "12:00", nokair.aircraft_list[0], "02-01-2000", 1000))
+
+nokair.service_list = Insurance("Insurance", 100)
+nokair.service_list = Baggage("+5kg Baggage", 100, 5)
+nokair.service_list = Baggage("+10kg Baggage", 100, 10)
+nokair.service_list = Baggage("+15kg Baggage", 100, 15)
