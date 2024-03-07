@@ -1,3 +1,4 @@
+from datetime import datetime
 #API
 #1.show_reservation
 #2.pay_by_credit_card
@@ -8,6 +9,8 @@
 #7.check_in //return boarding pass
 #8.create_flight
 #9.create_flight_instance
+
+
 
 class AirportSystem:                                     
     def __init__(self):
@@ -73,11 +76,29 @@ class AirportSystem:
         for flight_instance in self.__flight_instance_list:
             if flight_instance.flight_number == flight_number and flight_instance.date == date:
                 return flight_instance  
+            
+    def paid_by_qr(self, reservation):
+        payment_method = Qr()
+        transaction = Transaction(payment_method)
+        self.create_reservation_for_paid(reservation, transaction)
+        return "success"
 
-    def create_reservation_for_paid(self, flight_instance_list, passenger_list, flight_seats_list, payment_method):
+    def pay_by_credit_card(self, card_number, cardholder_name, expiry_date, cvv, reservation_data):
+        reservation = self.__create_reservation_for_paid(reservation_data)
+        if reservation:
+            payment_method = CreditCard(card_number, cardholder_name, expiry_date, cvv)
+            reservation.transaction = Transaction(payment_method)
+            self.__reservation_list.append(reservation)
+            return "success"
+        return "error"
+
+    def create_reservation_for_paid(self, reservation, transaction):
         reservation = Reservation()
-        #0 = title, 1 = first_name, 2 = middle_name, 3 = last_name, 4 = birthday, 5 = phone_number, 6 = email
+        flight_instance_list = reservation[0]
+        passenger_list  = reservation[1]
+        flight_seats_list = reservation[2]
         
+        #0 = title, 1 = first_name, 2 = middle_name, 3 = last_name, 4 = birthday, 5 = phone_number, 6 = email
         for passenger_data in passenger_list:
             passenger = Passenger(passenger_data[0], passenger_data[1], passenger_data[2], passenger_data[3], passenger_data[4], passenger_data[5], passenger_data[6])
             reservation.add_passenger(passenger)
@@ -93,13 +114,11 @@ class AirportSystem:
             for flight_seat_number in flight_seats_list[index]:
                 flight_seat = flight_instance.get_flight_seat(flight_seat_number)
                 if flight_seat.occupied:
-                    return "Seat already occupied"
+                    return None
                 flight_seat.occupied = True
                 new_flight_seat_list.append(flight_seat)
                 
             reservation.add_flight_seat(new_flight_seat_list)
-        
-        self.__reservation_list.append(reservation)
         return reservation
 
     def add_service():
@@ -112,12 +131,16 @@ class Reservation:
         self.__passenger_list = []
         self.__flight_seat_list = []
         self.__total_cost = 0                                                                                                   
-        self.__payment_method = None
+        self.__transaction = None
         self.__boarding_passes_list = []
         
     @property
     def flight_instances_list(self):
         return self.__flight_instance_list
+
+    @property
+    def transaction(self):
+        return self.__transaction
     
     def add_passenger(self, passenger):
         self.__passenger_list.append(passenger)
@@ -281,17 +304,31 @@ class SeatCategory:
         return self.__price
 
 
-class Payment:
+class PaymentMethod:
+    def __init__(self):
+        self.__payment_fee = 0
+        
+    @property
+    def payment_fee(self):
+        return self.__payment_fee
+
+
+class CreditCard(PaymentMethod):
+    def __init__(self, card_number, cardholder_name, expiry_date, cvv):
+        self.__card_number = card_number
+        self.__cardholder_name = cardholder_name
+        self.__expiry_date = expiry_date
+        self.__cvv = cvv
+        self.__payment_fee = 240
+    
+
+class Qr(PaymentMethod):
     pass
 
-
-class CreditCard(Payment):
-    pass
-
-
-class Qr(Payment):
-    pass
-
+class Transaction:
+    def __init__(self, payment_method: PaymentMethod):
+        self.__paid_time = datetime.now()
+        self.__payment_method = payment_method
 
 class Service:
     def __init__(self, service_name, price_per_unit):
