@@ -165,15 +165,15 @@ class Aircraft:
     
     def __init_default_seat_list(self):
         seats_data = []
-        for c in range(1,11):
-            for r in range(0,6):
+        for r in range(1,6):
+            for c in range(0,3):
                 alphabets = "ABCDEF"
-                seat_id = f"{alphabets[r]}{c}"
-                seat_category = SeatCategory("normal_seat",0)
+                seat_id = f"{alphabets[c]}{r}"
+                seat_category = SeatCategory("normal_seat", 200)
                 if r <= 2:
-                    seat_category = SeatCategory("premium_seat",500)
+                    seat_category = SeatCategory("premium_seat", 600)
                 if r <= 4:
-                    seat_category = SeatCategory("happy_seat",200)
+                    seat_category = SeatCategory("happy_seat", 400)
                 seats_data.append(Seats(seat_id, seat_category))
         return seats_data
 
