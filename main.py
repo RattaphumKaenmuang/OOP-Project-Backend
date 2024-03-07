@@ -76,13 +76,15 @@ class AirportSystem:
 
     def create_reservation_for_paid(self, flight_instance_list, passenger_list, flight_seats_list, payment_method):
         reservation = Reservation()
+        #0 = title, 1 = first_name, 2 = middle_name, 3 = last_name, 4 = birthday, 5 = phone_number, 6 = email
         
         for passenger_data in passenger_list:
-            passenger = Passenger(passenger_data["title"], passenger_data["first_name"], passenger_data["middle_name"], passenger_data["last_name"], passenger_data["birthday"], passenger_data["phone_number"], passenger_data["email"])
+            passenger = Passenger(passenger_data[0], passenger_data[1], passenger_data[2], passenger_data[3], passenger_data[4], passenger_data[5], passenger_data[6])
             reservation.add_passenger(passenger)
         
+        #0 = flight_number, 1 = date
         for flight_instance_data in flight_instance_list:
-            flight_instance = self.get_flight_instance(flight_instance_data["flight_number"], flight_instance_data["date"])
+            flight_instance = self.get_flight_instance(flight_instance_data[0], flight_instance_data[1])
             reservation.add_flight_instance(flight_instance)
         
         for index, flight_instance in enumerate(reservation.flight_instances_list):
