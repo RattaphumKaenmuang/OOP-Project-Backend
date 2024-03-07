@@ -72,23 +72,74 @@ class AirportSystem:
     def get_flight_instance(self, flight_number, date):
         for flight_instance in self.__flight_instance_list:
             if flight_instance.flight_number == flight_number and flight_instance.date == date:
-                return flight_instance
-    
-class Reservation:
-    def __init__(self, flight_instances, passengers_list, flight_seats_list, payment_method):
-        self.__booking_reference = None
-        self.__flight_instances = flight_instances
-        self.__passengers = passengers_list
-        self.__flight_seats_list = flight_seats_list
-        self.__total_cost = 0                                                                                                   
-        self.__payment_method = payment_method
-        self.__boarding_passes_list = []
+                return flight_instance  
 
+    def create_reservation_for_paid(self, flight_instance_list, passenger_list, flight_seats_list, payment_method):
+        reservation = Reservation()
+        
+        for passenger_data in passenger_list:
+            passenger = Passenger(passenger_data["title"], passenger_data["first_name"], passenger_data["middle_name"], passenger_data["last_name"], passenger_data["birthday"], passenger_data["phone_number"], passenger_data["email"])
+            reservation.add_passenger(passenger)
+        
+        for flight_instance_data in flight_instance_list:
+            flight_instance = self.get_flight_instance(flight_instance_data["flight_number"], flight_instance_data["date"])
+            reservation.add_flight_instance(flight_instance)
+        
+        for index, flight_instance in enumerate(reservation.flight_instances_list):
+            new_flight_seat_list = []
+            
+            for flight_seat_number in flight_seats_list[index]:
+                flight_seat = flight_instance.get_flight_seat(flight_seat_number)
+                if flight_seat.occupied:
+                    return "Seat already occupied"
+                flight_seat.occupied = True
+                new_flight_seat_list.append(flight_seat)
+                
+            reservation.add_flight_seat(new_flight_seat_list)
+        
+        self.__reservation_list.append(reservation)
+        return reservation
+
+    def add_service():
+        pass
+
+class Reservation:
+    def __init__(self):
+        self.__booking_reference = None
+        self.__flight_instance_list = []
+        self.__passenger_list = []
+        self.__flight_seat_list = []
+        self.__total_cost = 0                                                                                                   
+        self.__payment_method = None
+        self.__boarding_passes_list = []
+        
+    @property
+    def flight_instances_list(self):
+        return self.__flight_instance_list
+    
+    def add_passenger(self, passenger):
+        self.__passenger_list.append(passenger)
+    
+    def add_flight_seat(self, flight_seat):
+        self.__flight_seat_list.append(flight_seat)
+        
+    def add_flight_instance(self, flight_instance):
+        self.__flight_instance_list.append(flight_instance)
+    
 class User:
-    pass
+    def __init__(self, title, first_name, middle_name, last_name, birthday, phone_number, email):
+        self.__title = title
+        self.__first_name = first_name
+        self.__middle_name = middle_name
+        self.__last_name = last_name
+        self.__birthday = birthday
+        self.__phone_number = phone_number
+        self.__email = email
 
 class Passenger(User):
-    pass
+    def __init__(self, title, first_name, middle_name, last_name, birthday, phone_number, email):
+        super().__init__(title, first_name, middle_name, last_name, birthday, phone_number, email)
+        self.__extra_services = []
 
 class Admin(User):
     pass
@@ -149,6 +200,11 @@ class FlightInstance(Flight):
     @property
     def flight_seat_list(self):
         return self.__flight_seat_list
+
+    def get_flight_seat(self, seat_number):
+        for flight_seat in self.__flight_seat_list:
+            if flight_seat.seat_number == seat_number:
+                return flight_seat
     
 class Aircraft:
     def __init__(self, aircraft_number):
