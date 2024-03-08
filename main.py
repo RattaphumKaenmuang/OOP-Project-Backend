@@ -1,4 +1,5 @@
 from datetime import datetime
+from uuid import uuid4
 #API
 #1.show_reservation
 #2.pay_by_credit_card
@@ -45,12 +46,12 @@ class AirportSystem:
     def service_list(self, service):
         self.__service_list.append(service)
     
-    def get_flight_instance_matches(self, starting_location, destination, date_depart, date_return = None):
+    def get_flight_instance_matches(self, starting_location, destination, depart_date, return_date = None):
         departing_flight_instance = []
         returning_flight_instance = []
 
         for flight_instance in self.__flight_instance_list:
-            if flight_instance.starting_location.name == starting_location and flight_instance.destination.name == destination and flight_instance.date == date_depart:
+            if flight_instance.starting_location.name == starting_location and flight_instance.destination.name == destination and flight_instance.date == depart_date:
                 flight_instance_info = {"departure_time": flight_instance.departure_time,
                                         "arrival_time": flight_instance.arrival_time,
                                         "flight_number": flight_instance.flight_number,
@@ -59,9 +60,9 @@ class AirportSystem:
                 
                 departing_flight_instance.append(flight_instance_info)
 
-        if date_return != None:
+        if return_date != None:
             for flight_instance in self.__flight_instance_list:
-                if flight_instance.destination.name == starting_location and flight_instance.starting_location.name == destination and flight_instance.date == date_return:
+                if flight_instance.destination.name == starting_location and flight_instance.starting_location.name == destination and flight_instance.date == return_date:
                     flight_instance_info = {"departure_time": flight_instance.departure_time,
                                         "arrival_time": flight_instance.arrival_time,
                                         "flight_number": flight_instance.flight_number,
@@ -78,29 +79,47 @@ class AirportSystem:
                 return flight_instance  
             
     def paid_by_qr(self, reservation):
-        payment_method = Qr()
-        transaction = Transaction(payment_method)
-        self.create_reservation_for_paid(reservation, transaction)
-        return "success"
-
-    def pay_by_credit_card(self, card_number, cardholder_name, expiry_date, cvv, reservation_data):
-        reservation = self.__create_reservation_for_paid(reservation_data)
+        reservation = self.create_reservation_for_paid(reservation, transaction)
         if reservation:
-            payment_method = CreditCard(card_number, cardholder_name, expiry_date, cvv)
-            reservation.transaction = Transaction(payment_method)
+            payment_method = Qr()
+            transaction = Transaction(payment_method)
+            reservation.transaction = transaction
+            reservation.generate_booking_reference()
             self.__reservation_list.append(reservation)
             return "success"
         return "error"
 
-    def create_reservation_for_paid(self, reservation, transaction):
+    def pay_by_credit_card(self, card_number, cardholder_name, expiry_date, cvv, reservation_data):
+        reservation = self.create_reservation_for_paid(reservation_data)
+        if reservation:
+            payment_method = CreditCard(card_number, cardholder_name, expiry_date, cvv)
+            transaction = Transaction(payment_method)
+            reservation.transaction = transaction
+            reservation.generate_booking_reference()
+            self.__reservation_list.append(reservation)
+            return "success"
+        return "error"
+
+    def get_service(self, service_name):
+        for service in self.__service_list:
+            if service.service_name == service_name:
+                return service
+        return None
+    
+    def create_reservation_for_paid(self, reservation_data):
         reservation = Reservation()
-        flight_instance_list = reservation[0]
-        passenger_list  = reservation[1]
-        flight_seats_list = reservation[2]
+        flight_instance_list = reservation_data[0]
+        passenger_list  = reservation_data[1]
+        flight_seats_list = reservation_data[2]
         
-        #0 = title, 1 = first_name, 2 = middle_name, 3 = last_name, 4 = birthday, 5 = phone_number, 6 = email
+        #0 = title, 1 = first_name, 2 = middle_name, 3 = last_name, 4 = birthday, 5 = phone_number, 6 = email, 7 = service_list
         for passenger_data in passenger_list:
             passenger = Passenger(passenger_data[0], passenger_data[1], passenger_data[2], passenger_data[3], passenger_data[4], passenger_data[5], passenger_data[6])
+            service_list = passenger_data[7]
+            for service_data in service_list:
+                #0 = service_name, 1 = price_per_unit
+                service = self.get_service(service_data[0])
+                passenger.add_service(service)
             reservation.add_passenger(passenger)
         
         #0 = flight_number, 1 = date
@@ -119,11 +138,25 @@ class AirportSystem:
                 new_flight_seat_list.append(flight_seat)
                 
             reservation.add_flight_seat(new_flight_seat_list)
+
         return reservation
 
-    def add_service():
-        pass
-
+    def get_reservation(self, booking_reference):
+        for reservation in self.__reservation_list:
+            if reservation.booking_reference == booking_reference:
+                return reservation
+        return None
+    
+    def check_in(self, booking_reference, last_name):
+        reservation = self.get_reservation(booking_reference)
+        if reservation:
+            passenger_list = reservation.get_passenger_list_by_last_name(last_name)
+            boarding_passes_list = []
+            #flight_number, flight_seat_number, booking_reference, depart_date, passenger
+            for passenger in passenger_list:
+                boarding_pass = reservation.create_boarding_pass(passenger)
+                boarding_passes_list.append(boarding_pass)
+        return boarding_passes_list
 class Reservation:
     def __init__(self):
         self.__booking_reference = None
@@ -141,6 +174,10 @@ class Reservation:
     @property
     def transaction(self):
         return self.__transaction
+
+    @property
+    def booking_referrence(self):
+        return self.__booking_reference
     
     def add_passenger(self, passenger):
         self.__passenger_list.append(passenger)
@@ -150,7 +187,42 @@ class Reservation:
         
     def add_flight_instance(self, flight_instance):
         self.__flight_instance_list.append(flight_instance)
+        
+    def generate_booking_reference(self):
+        split_uuid = str(self.__booking_reference).split("-")
+        short_uuid = split_uuid[0] + split_uuid[1]
+        self.__booking_reference = short_uuid
     
+    def get_passenger_list_by_last_name(self, last_name):
+        matched_passenger_list = []
+        for passenger in self.__passenger_list:
+            if passenger.last_name == last_name:
+                matched_passenger_list.append(passenger)
+        return matched_passenger_list
+    
+    def calculate_total_cost(self):
+        self.__total_cost = 0
+        
+        for flight_instance in self.__flight_instance_list:
+            self.__total_cost += flight_instance.cost * len(self.__passenger_list)
+        
+        for flight_seats in self.__flight_seat_list:
+            for flight_seat in flight_seats:
+                self.__total_cost += flight_seat.seat_category.seat_price
+        for passenger in self.__passenger_list:
+            for service in passenger.service_list:
+                self.__total_cost += service.total_cost
+                
+    def create_boarding_pass(self, passenger):
+        #flight_number, flight_seat_number, booking_reference, depart_date, passenger
+        passenger_index = self.__passenger_list.index(passenger)
+        for index, flight_instance in enumerate(self.__flight_instance_list):
+            flight_number = flight_instance.flight_number
+            flight_seat_number = self.__flight_seat_list[index][passenger_index]
+            depart_date = flight_instance.date
+            boarding_pass = BoardingPass(flight_number, flight_seat_number, self.__booking_reference, depart_date, passenger)
+            self.boarding_pass.append(boarding_pass)
+        return boarding_pass
 class User:
     def __init__(self, title, first_name, middle_name, last_name, birthday, phone_number, email):
         self.__title = title
@@ -164,13 +236,41 @@ class User:
 class Passenger(User):
     def __init__(self, title, first_name, middle_name, last_name, birthday, phone_number, email):
         super().__init__(title, first_name, middle_name, last_name, birthday, phone_number, email)
-        self.__extra_services = []
+        self.__service_list = []
 
+    @property
+    def service_list(self):
+        return self.__service_list
+    
+    def add_service(self, service):
+        self.__service_list.append(service)
 class Admin(User):
     pass
 
 class BoardingPass:
-    pass
+    def __init__(self, flight_number, flight_seat_number, booking_reference, depart_date, passenger):
+        # self.__flight_seat_number = passenger.flight_seats[][1]
+        # self.__flight_number = reservation.flight_instances[][1]
+        # self.__passenger_title = passenger.title
+        # self.__passenger_name = passenger.name
+        # self.__aircraft_number = reservation.flight_instances[][1].aircraft.aircraft_number
+        # self.__booking_reference = reservation.booking_reference
+        # self.__departure_date = reservation.flight_instances[][1].date
+        # self.__boarding_time = reservation.flight_instances[][1].boarding_time
+        # self.__from = reservation.flight_instances[][1].froml
+        # self.__to = reservation.flight_instances[][1].to
+        flight_instance = nokair.get_flight_instance(flight_number, depart_date)
+        self.__flight_seat_number = flight_seat_number
+        self.__flight_number = flight_number
+        if passenger.middle_name:
+            self.__passenger_name = f"{passenger.title} {passenger.first_name} {passenger.middle_name} {passenger.last_name}"
+        else:
+            self.__passenger_name = f"{passenger.title} {passenger.first_name} {passenger.last_name}"
+        self.__aircraft_number = flight_instance.aircraft.aircraft_number
+        self.__booking_reference = booking_reference
+        self.__departure_date = depart_date
+        self.__starting_location = flight_instance.starting_location.name
+        self.__destination = flight_instance.destination.name
 
 class Flight:
     def __init__(self, starting_location, destination, flight_number):
@@ -334,20 +434,27 @@ class Service:
     def __init__(self, service_name, price_per_unit):
         self.__service_name = service_name
         self.__price_per_unit = float(price_per_unit)
+        self.__total_cost = price_per_unit
 
     @property
     def price_per_unit(self):
         return self.__price_per_unit
 
+    @property
+    def total_cost(self):
+        return self.__total_cost
+
 class Insurance(Service):
     def __init__(self, service_name, price_per_unit):
         super().__init__(service_name, price_per_unit)
+        self.__total_cost = price_per_unit
 
 
 class Baggage(Service):
     def __init__(self, service_name, price_per_unit, weight):
         super().__init__(service_name, price_per_unit)
         self.__weight = weight
+        self.total_cost = price_per_unit * weight
 
     # def get_total_cost(self):
     #     return self.price_per_unit * self.__weight

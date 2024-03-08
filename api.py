@@ -45,7 +45,9 @@ def pay_by_credit(card_number: str, cardholder_name: str, expiry_date: str, cvv:
 def pay_by_qr(paid_time: str, reservation_dict : dict):
     return nokair.pay_by_qr_code(paid_time, reservation_dict)
 
-
+@app.post("/check_in", tags=["Check In"])
+async def check_in(booking_reference: str, last_name: str):
+    return nokair.check_in(booking_reference, last_name)
 
 # if __name__ == "__main__":
 #     uvicorn.run("api:app", host="127.0.0.1", port=8000, log_level="info")
