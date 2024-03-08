@@ -370,3 +370,5 @@ nokair.service_list = Insurance("Insurance", 100)
 nokair.service_list = Baggage("+5kg Baggage", 100, 5)
 nokair.service_list = Baggage("+10kg Baggage", 100, 10)
 nokair.service_list = Baggage("+15kg Baggage", 100, 15)
+
+print(nokair.get_flight_instance_matches("Don Mueang", "Chiang Mai", "01-01-2000", "02-01-2000"))

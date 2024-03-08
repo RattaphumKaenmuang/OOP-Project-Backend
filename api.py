@@ -2,12 +2,28 @@ from main import *
 import uvicorn
 from typing import Optional
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+import json
 
 app = FastAPI()
 
+origins = [
+    "http://localhost:5500",
+    "http://127.0.0.1:5500"
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 @app.get("/flight_instance_matches", tags=["Show + Get Flight Instance Matches"])
-def get_flight_instances_matches(froml : str, to : str, depart_date : str, return_date : Optional[str] = None):
-    return nokair.get_flight_instance_matches(froml, to, depart_date, return_date)
+def get_flight_instances_matches(starting_location : str, destination : str, depart_date : str, return_date : Optional[str] = None):
+    flight_instance_matches = nokair.get_flight_instance_matches(starting_location, destination, depart_date, return_date)
+    return json.dumps(flight_instance_matches)
 
 @app.get("/get_all_seats", tags=["Show + Get Flight Instance Matches"])
 def get_all_seats(flight_number : str, date : str):
@@ -28,5 +44,8 @@ def pay_by_credit(card_number: str, cardholder_name: str, expiry_date: str, cvv:
 @app.post("/pay_by_qr", tags=["Paying"])
 def pay_by_qr(paid_time: str, reservation_dict : dict):
     return nokair.pay_by_qr_code(paid_time, reservation_dict)
+
+
+
 # if __name__ == "__main__":
 #     uvicorn.run("api:app", host="127.0.0.1", port=8000, log_level="info")
